@@ -8,11 +8,21 @@ echo ====================================================================
 
 cd /d "%~dp0"
 
-:: Wait 2 seconds then open web browser
-timeout /t 2 /nobreak >nul
-start "" "http://127.0.0.1:5000"
+:: Open Web Browser after 2 seconds
+start "" cmd /c "timeout /t 2 /nobreak >nul & start http://127.0.0.1:5000"
 
-:: Launch Python Backend Server
-python app.py
+:: Try running with python command
+python run.py
+if %ERRORLEVEL% NEQ 0 (
+    echo Python command failed, trying 'py' command...
+    py run.py
+)
+
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [ERROR] Failed to start Python backend.
+    echo Please make sure Python 3.x is installed and added to PATH.
+    echo.
+)
 
 pause
