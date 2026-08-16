@@ -1,28 +1,40 @@
 @echo off
-title Smart Waste Management System - SIH 2026
+title Smart Waste Management System - Ahmedabad Smart City
 echo ====================================================================
-echo  SIH 2026 - SMART WASTE MANAGEMENT & ROUTE OPTIMIZATION SYSTEM
+echo  SMART WASTE MANAGEMENT & ROUTE OPTIMIZATION SYSTEM
 echo ====================================================================
-echo  Starting Python Flask Backend Server & Opening Web Dashboard...
+echo  Checking Python environment and dependencies...
 echo ====================================================================
 
 cd /d "%~dp0"
 
-:: Open Web Browser after 2 seconds
-start "" cmd /c "timeout /t 2 /nobreak >nul & start http://127.0.0.1:5000"
-
-:: Try running with python command
-python run.py
+:: Check if Python is installed
+python --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo Python command failed, trying 'py' command...
-    py run.py
+    py --version >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 (
+        echo.
+        echo [ERROR] Python 3 is not detected on your system PATH!
+        echo You can still use the web application in standalone mode:
+        echo Opening frontend\index.html directly in your default browser...
+        start "" "%~dp0frontend\index.html"
+        pause
+        exit /b 1
+    )
 )
 
+:: Ensure dependencies are installed
+echo Installing / verifying required Python packages...
+pip install -r requirements.txt --quiet --disable-pip-version-check
+
+echo ====================================================================
+echo  Launching Flask REST API & Web Dashboard at http://127.0.0.1:5000
+echo ====================================================================
+
+python app.py
 if %ERRORLEVEL% NEQ 0 (
-    echo.
-    echo [ERROR] Failed to start Python backend.
-    echo Please make sure Python 3.x is installed and added to PATH.
-    echo.
+    echo Attempting launch with 'py app.py'...
+    py app.py
 )
 
 pause
