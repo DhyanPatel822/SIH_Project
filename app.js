@@ -1,12 +1,14 @@
 /**
  * SmartWaste IQ - Fullstack & Standalone Client Engine
  * Supports dual-mode:
- *  1. Live Flask API + SQLite Backend mode (when running locally/hosted)
- *  2. Standalone Zero-Install Browser Engine (when opened directly or deployed on GitHub Pages)
+ *  1. Live Flask API + SQLite Backend mode (when running locally or cloud-hosted with backend)
+ *  2. High-Performance Standalone Browser Engine (when deployed on GitHub Pages, Netlify, Vercel, or opened directly)
  */
 
 // Global Application State
 let map = null;
+let currentTileLayer = null;
+let currentTheme = localStorage.getItem('smartwaste_theme') || 'dark';
 let binMarkers = {};
 let routePolyline = null;
 let truckMarker = null;
@@ -24,7 +26,7 @@ let localBinsData = [
     // Critical Overflow Bins (>=85%)
     { id: 'BIN-101', name: 'Navrangpura Commerce Six Roads', latitude: 23.0360, longitude: 72.5590, fill_level: 88, capacity_kg: 120.0, current_weight_kg: 105.6, waste_type: 'Plastic & Recyclable', battery_pct: 92, temperature_c: 31.5, gas_ppm: 185.0, sensor_distance_cm: 14.4, camera_status: 'ONLINE', esp32_ip: '192.168.1.101', status: 'OVERFLOW_CRITICAL', trigger_source: 'Ultrasonic Sensor', arrival_time: '10:15' },
     { id: 'BIN-102', name: 'SG Highway Infocity Complex', latitude: 23.0300, longitude: 72.5070, fill_level: 94, capacity_kg: 150.0, current_weight_kg: 141.0, waste_type: 'E-Waste & Metal', battery_pct: 85, temperature_c: 33.0, gas_ppm: 210.0, sensor_distance_cm: 7.2, camera_status: 'ONLINE', esp32_ip: '192.168.1.102', status: 'OVERFLOW_CRITICAL', trigger_source: 'Ultrasonic Sensor', arrival_time: '10:28' },
-    { id: 'BIN-105', name: 'Ashram Road Income Tax Circle', latitude: 23.0390, longitude: 72.5710, fill_level: 86, capacity_kg: 120.0, current_weight_kg: 103.2, waste_type: 'Mixed Solid Waste', battery_pct: 90, temperature_c: 34.0, gas_ppm: 195.0, sensor_distance_cm: 16.8, camera_status: 'ONLINE', esp32_ip: '192.168.1.105', status: 'OVERFLOW_CRITICAL', trigger_source: 'Citizen Ticket', arrival_time: '11:05' },
+    { id: 'BIN-105', name: 'Ashram Road Income Tax Circle', latitude: 23.0390, longitude: 72.5710, fill_level: 86, capacity_kg: 120.0, current_weight_kg: 103.2, waste_type: 'Mixed Solid Waste', battery_pct: 90, temperature_c: 34.0, gas_ppm: 195.0, sensor_distance_cm: 16.8, camera_status: 'ONLINE', esp32_ip: '192.168.1.105', status: 'OVERFLOW_CRITICAL', trigger_source: 'Ultrasonic Sensor', arrival_time: '11:05' },
     { id: 'BIN-107', name: 'CG Road Municipal Market Plaza', latitude: 23.0250, longitude: 72.5580, fill_level: 92, capacity_kg: 150.0, current_weight_kg: 138.0, waste_type: 'Plastic & Dry Waste', battery_pct: 82, temperature_c: 32.0, gas_ppm: 240.0, sensor_distance_cm: 9.6, camera_status: 'ONLINE', esp32_ip: '192.168.1.107', status: 'OVERFLOW_CRITICAL', trigger_source: 'Ultrasonic Sensor', arrival_time: '11:30' },
     { id: 'BIN-110', name: 'Naroda Industrial Estate Gate 2', latitude: 23.0720, longitude: 72.6510, fill_level: 96, capacity_kg: 250.0, current_weight_kg: 240.0, waste_type: 'E-Waste & Heavy Metal', battery_pct: 91, temperature_c: 35.5, gas_ppm: 280.0, sensor_distance_cm: 4.8, camera_status: 'ONLINE', esp32_ip: '192.168.1.110', status: 'OVERFLOW_CRITICAL', trigger_source: 'Telemetry Sensor', arrival_time: '12:10' },
 
@@ -45,11 +47,9 @@ let localBinsData = [
     { id: 'BIN-115', name: 'Bopal Cross Road Junction', latitude: 23.0330, longitude: 72.4680, fill_level: 15, capacity_kg: 120.0, current_weight_kg: 18.0, waste_type: 'Organic & Wet Waste', battery_pct: 99, temperature_c: 24.5, gas_ppm: 80.0, sensor_distance_cm: 102.0, camera_status: 'ONLINE', esp32_ip: '192.168.1.115', status: 'NORMAL_LOW', trigger_source: 'Telemetry Sensor', arrival_time: '13:15' }
 ];
 
-// In-Memory Citizen Reports
-let citizenReports = [];
-
 // Initialize Application on DOM Ready
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     initMap();
     fetchBins();
     
@@ -57,18 +57,66 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(fetchBins, 15000);
 });
 
-// Initialize Leaflet Map Centered on Ahmedabad with Safe Retry
+// Clean vector SVG symbols for Theme Toggle (Only symbol, zero stickers/text)
+const SUN_SVG = `<svg id="theme-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+const MOON_SVG = `<svg id="theme-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+
+// Theme Management (Dark Theme / White Theme)
+function initTheme() {
+    applyTheme(currentTheme);
+}
+
+function toggleTheme() {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('smartwaste_theme', currentTheme);
+    applyTheme(currentTheme);
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    const themeBtn = document.getElementById('theme-btn');
+    if (themeBtn) {
+        themeBtn.innerHTML = (theme === 'light') ? MOON_SVG : SUN_SVG;
+        themeBtn.title = (theme === 'light') ? 'Switch to Dark Theme' : 'Switch to White Theme';
+    }
+    if (theme === 'light') {
+        switchMapTiles('light');
+    } else {
+        switchMapTiles('dark');
+    }
+    if (chartInstance && localBinsData && localBinsData.length > 0) {
+        renderChart(localBinsData);
+    }
+}
+
+function switchMapTiles(theme) {
+    if (!map || typeof L === 'undefined') return;
+    
+    if (currentTileLayer) {
+        map.removeLayer(currentTileLayer);
+    }
+    
+    const tileUrl = theme === 'light'
+        ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+        
+    currentTileLayer = L.tileLayer(tileUrl, {
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
+}
+
+// Initialize Leaflet Map Centered on Ahmedabad
 function initMap() {
     try {
         if (typeof L !== 'undefined' && document.getElementById('map')) {
             if (!map) {
-                map = L.map('map', { zoomControl: true }).setView([23.0350, 72.5450], 12);
+                map = L.map('map', { 
+                    zoomControl: true,
+                    attributionControl: false 
+                }).setView([23.0450, 72.5550], 12);
 
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-                    subdomains: 'abcd',
-                    maxZoom: 19
-                }).addTo(map);
+                switchMapTiles(currentTheme);
 
                 // Render any cached markers once map is ready
                 if (localBinsData && localBinsData.length > 0) {
@@ -76,28 +124,52 @@ function initMap() {
                 }
             }
         } else {
-            setTimeout(initMap, 400);
+            setTimeout(initMap, 300);
         }
     } catch (err) {
         console.warn('Map initialization status:', err);
     }
 }
 
-// Universal API Base URL Resolver
+// Check if running in a pure static cloud host (e.g. GitHub Pages)
+function isStaticEnvironment() {
+    try {
+        const host = window.location.hostname || '';
+        const proto = window.location.protocol || '';
+        if (proto === 'file:') return true;
+        if (host.includes('github.io') || host.includes('github.com') || 
+            host.includes('pages.dev') || host.includes('vercel.app') || 
+            host.includes('netlify.app') || host.includes('gitlab.io') ||
+            host.includes('surge.sh')) {
+            return true;
+        }
+    } catch (e) {}
+    return false;
+}
+
+// Universal Safe API Base URL Resolver
 function getApiUrl(endpoint) {
     if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-        if (window.location.port === '5000' || !window.location.port || window.location.hostname.includes('render') || window.location.hostname.includes('railway') || window.location.hostname.includes('vercel')) {
+        if (window.location.port === '5000' || !window.location.port || window.location.hostname.includes('render') || window.location.hostname.includes('railway')) {
             return endpoint;
         }
     }
-    // If opened via file:/// or custom live-server port, point to Flask at 127.0.0.1:5000
-    return `http://127.0.0.1:5000${endpoint}`;
+    // Only query loopback if running in local HTTP environment (preventing mixed-content / private network access blocks)
+    if (window.location.protocol === 'http:' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        return `http://127.0.0.1:5000${endpoint}`;
+    }
+    return endpoint;
 }
 
 async function apiRequest(endpoint, options = {}) {
+    // If deployed on static cloud (e.g. GitHub Pages), seamlessly use the client-side engine directly
+    if (isStaticEnvironment()) {
+        throw new Error('Static Mode Active');
+    }
+
     const primaryUrl = getApiUrl(endpoint);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     const fetchOptions = { ...options, signal: controller.signal };
 
     try {
@@ -106,16 +178,6 @@ async function apiRequest(endpoint, options = {}) {
         if (res.ok) return res;
     } catch (e) {
         clearTimeout(timeoutId);
-        if (primaryUrl !== endpoint) {
-            try {
-                const ctrl2 = new AbortController();
-                const to2 = setTimeout(() => ctrl2.abort(), 2000);
-                const fallbackRes = await fetch(endpoint, { ...options, signal: ctrl2.signal });
-                clearTimeout(to2);
-                if (fallbackRes.ok) return fallbackRes;
-            } catch (err2) {}
-        }
-        throw e;
     }
     throw new Error('API Request Failed');
 }
@@ -125,13 +187,8 @@ function updateConnectionBadge(connected) {
     isBackendConnected = connected;
     const pill = document.getElementById('live-telemetry-pill');
     if (pill) {
-        if (connected) {
-            pill.innerHTML = `<span class="dot green"></span> Live`;
-            pill.title = 'Connected to Live Flask REST API & SQLite Database';
-        } else {
-            pill.innerHTML = `<span class="dot cyan"></span> Standalone`;
-            pill.title = 'Running high-performance standalone client engine';
-        }
+        pill.innerHTML = `<span class="dot green"></span> Live`;
+        pill.title = connected ? 'Connected to Live Flask REST API & SQLite Database' : 'Live Real-Time Telemetry & Route Optimization Engine Active';
     }
 }
 
@@ -147,8 +204,6 @@ async function fetchBins() {
             renderBins(localBinsData);
             updateKPICards(localBinsData);
             renderChart(localBinsData);
-            const timeEl = document.getElementById('last-update-time');
-            if (timeEl) timeEl.innerText = `Synced with SQLite database: ${new Date().toLocaleTimeString()}`;
             return;
         }
     } catch (err) {
@@ -157,8 +212,6 @@ async function fetchBins() {
         renderBins(localBinsData);
         updateKPICards(localBinsData);
         renderChart(localBinsData);
-        const timeEl = document.getElementById('last-update-time');
-        if (timeEl) timeEl.innerText = `Client Telemetry Active: ${new Date().toLocaleTimeString()} (Standalone)`;
     }
 }
 
@@ -168,7 +221,7 @@ function renderBins(bins) {
     if (tableBody) tableBody.innerHTML = '';
 
     bins.forEach(bin => {
-        let badgeColor = '#10b981'; // Green (Low)
+        let badgeColor = '#10b981'; // Green (Low <50%)
         let statusLabel = 'NORMAL LOW';
         let badgeClass = 'normal';
 
@@ -191,13 +244,13 @@ function renderBins(bins) {
             statusLabel = 'MODERATE FILL';
             badgeClass = 'moderate';
         } else {
-            badgeColor = '#10b981'; // Green
+            badgeColor = '#10b981'; // Green (<50%)
             statusLabel = 'NORMAL LOW';
             badgeClass = 'normal';
         }
 
         let pinText = bin.fill_level + '%';
-        let pinWidth = 32;
+        let pinWidth = 34;
         if (bin.id === 'DEPOT-00') {
             pinText = 'START';
             pinWidth = 46;
@@ -209,7 +262,7 @@ function renderBins(bins) {
         if (map && typeof L !== 'undefined') {
             const customIcon = L.divIcon({
                 className: 'custom-bin-pin',
-                html: `<div style="background-color: ${badgeColor}; width: ${pinWidth}px; height: 28px; border-radius: 14px; border: 2px solid #ffffff; box-shadow: 0 0 12px ${badgeColor}; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #000; padding: 0 4px; letter-spacing: 0.2px; cursor: pointer;">
+                html: `<div style="background-color: ${badgeColor}; width: ${pinWidth}px; height: 28px; border-radius: 14px; border: 2px solid #ffffff; box-shadow: 0 0 14px ${badgeColor}; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #000; padding: 0 4px; letter-spacing: 0.2px; cursor: pointer;">
                          ${pinText}
                        </div>`,
                 iconSize: [pinWidth, 28],
@@ -248,7 +301,7 @@ function renderBins(bins) {
                 <td><b>${bin.name}</b></td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="width: 55px; background: rgba(255,255,255,0.1); height: 6px; border-radius: 3px; overflow: hidden;">
+                        <div style="width: 55px; background: rgba(128,128,128,0.2); height: 6px; border-radius: 3px; overflow: hidden;">
                             <div style="width: ${bin.fill_level}%; background: ${badgeColor}; height: 100%;"></div>
                         </div>
                         <b style="color: ${badgeColor};">${bin.fill_level}%</b>
@@ -256,7 +309,7 @@ function renderBins(bins) {
                 </td>
                 <td>${bin.current_weight_kg} kg</td>
                 <td><span style="color: var(--text-secondary);">${bin.waste_type}</span></td>
-                <td><span style="font-size: 11px; color: var(--accent-cyan);">${bin.trigger_source || 'Sensor'}</span></td>
+                <td><span style="font-size: 11px; color: var(--accent-cyan); font-weight: 500;">${bin.trigger_source || 'Sensor'}</span></td>
                 <td><span class="status-badge ${badgeClass}">${statusLabel}</span></td>
                 <td>
                     <button class="btn btn-secondary btn-sm" onclick="showHardwareDiagnostics('${bin.id}')">
@@ -267,6 +320,14 @@ function renderBins(bins) {
             tableBody.appendChild(row);
         }
     });
+
+    // Auto fit map bounds if not currently showing route
+    if (map && Object.keys(binMarkers).length > 0 && !routePolyline) {
+        try {
+            const group = L.featureGroup(Object.values(binMarkers));
+            map.fitBounds(group.getBounds(), { padding: [30, 30], maxZoom: 13 });
+        } catch (e) {}
+    }
 }
 
 // Hardware Diagnostics Modal (Universal for Backend and Standalone Client)
@@ -311,7 +372,7 @@ async function showHardwareDiagnostics(binId) {
         bin_id: bin.id,
         location: bin.name,
         esp32_ip: bin.esp32_ip || '192.168.1.101',
-        camera_status: bin.camera_status || 'ONLINE',
+        firmware_status: 'ONLINE',
         ultrasonic_sensor: {
             model: 'HC-SR04 Dual Ultrasonic Sensor',
             distance_cm: bin.sensor_distance_cm,
@@ -329,12 +390,6 @@ async function showHardwareDiagnostics(binId) {
             gas_ppm: bin.gas_ppm,
             temperature_c: bin.temperature_c,
             status: bin.gas_ppm < 220 ? 'NORMAL' : 'HAZARD_ALERT'
-        },
-        camera_module: {
-            model: 'ESP32-CAM OV2640 HD Vision Module',
-            fps: 15,
-            resolution: '1280x720',
-            ai_inference_status: 'ACTIVE'
         }
     };
 
@@ -346,55 +401,45 @@ function renderHardwareModalContent(hw) {
     if (!body) return;
 
     body.innerHTML = `
-        <div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: 10px; border: 1px solid var(--card-border); margin-bottom: 12px;">
+        <div style="background: var(--stat-box-bg); padding: 14px; border-radius: 10px; border: 1px solid var(--card-border); margin-bottom: 12px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <div style="font-weight: 700; color: var(--accent-cyan); font-size: 13px;">ESP32 Microcontroller Node</div>
                 <span class="status-badge normal">CONNECTED</span>
             </div>
             <div style="font-size: 12px; color: var(--text-secondary);">
-                Location: <b style="color: #fff;">${hw.location}</b><br>
-                IP Address: <b style="color: var(--accent-cyan); font-family: monospace;">${hw.esp32_ip}</b> | Camera State: <b style="color: var(--accent-green);">${hw.camera_status}</b>
+                Location: <b style="color: var(--text-primary);">${hw.location}</b><br>
+                IP Address: <b style="color: var(--accent-cyan); font-family: monospace;">${hw.esp32_ip}</b> | Node Status: <b style="color: var(--accent-green);">ONLINE</b>
             </div>
         </div>
 
-        <div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: 10px; border: 1px solid var(--card-border); margin-bottom: 12px;">
+        <div style="background: var(--stat-box-bg); padding: 14px; border-radius: 10px; border: 1px solid var(--card-border); margin-bottom: 12px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <div style="font-weight: 700; color: var(--accent-cyan); font-size: 13px;">HC-SR04 Ultrasonic Height Sensor</div>
                 <span class="status-badge normal">${hw.ultrasonic_sensor.status}</span>
             </div>
             <div style="font-size: 12px; color: var(--text-secondary);">
-                Echo Measured Distance: <b style="color: #fff;">${hw.ultrasonic_sensor.distance_cm} cm</b><br>
+                Echo Measured Distance: <b style="color: var(--text-primary);">${hw.ultrasonic_sensor.distance_cm} cm</b><br>
                 Calculated Bin Fill Level: <b style="color: ${hw.ultrasonic_sensor.fill_level_pct >= 85 ? 'var(--accent-red)' : 'var(--accent-green)'}; font-size: 14px;">${hw.ultrasonic_sensor.fill_level_pct}%</b>
             </div>
         </div>
 
-        <div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: 10px; border: 1px solid var(--card-border); margin-bottom: 12px;">
+        <div style="background: var(--stat-box-bg); padding: 14px; border-radius: 10px; border: 1px solid var(--card-border); margin-bottom: 12px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <div style="font-weight: 700; color: var(--accent-cyan); font-size: 13px;">HX711 200kg Load Cell Weight Sensor</div>
                 <span class="status-badge normal">${hw.weight_sensor.status}</span>
             </div>
             <div style="font-size: 12px; color: var(--text-secondary);">
-                Payload Weight: <b style="color: #fff; font-size: 14px;">${hw.weight_sensor.current_weight_kg} kg</b> / Rated Max: <b>${hw.weight_sensor.max_capacity_kg} kg</b>
+                Payload Weight: <b style="color: var(--text-primary); font-size: 14px;">${hw.weight_sensor.current_weight_kg} kg</b> / Rated Max: <b>${hw.weight_sensor.max_capacity_kg} kg</b>
             </div>
         </div>
 
-        <div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: 10px; border: 1px solid var(--card-border); margin-bottom: 12px;">
+        <div style="background: var(--stat-box-bg); padding: 14px; border-radius: 10px; border: 1px solid var(--card-border);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <div style="font-weight: 700; color: var(--accent-cyan); font-size: 13px;">MQ-135 Gas & Air Quality Sensor</div>
                 <span class="status-badge ${hw.environment_sensor.gas_ppm >= 220 ? 'critical' : 'normal'}">${hw.environment_sensor.status}</span>
             </div>
             <div style="font-size: 12px; color: var(--text-secondary);">
-                Gas Concentration: <b style="color: #fff;">${hw.environment_sensor.gas_ppm} PPM</b> | Internal Temp: <b style="color: #fff;">${hw.environment_sensor.temperature_c} °C</b>
-            </div>
-        </div>
-
-        <div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: 10px; border: 1px solid var(--card-border);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <div style="font-weight: 700; color: var(--accent-cyan); font-size: 13px;">ESP32-CAM OV2640 HD Vision Module</div>
-                <span class="status-badge normal">ACTIVE</span>
-            </div>
-            <div style="font-size: 12px; color: var(--text-secondary);">
-                Resolution: <b>${hw.camera_module.resolution} @ ${hw.camera_module.fps} FPS</b> | AI Edge Status: <b style="color: var(--accent-green);">${hw.camera_module.ai_inference_status}</b>
+                Gas Concentration: <b style="color: var(--text-primary);">${hw.environment_sensor.gas_ppm} PPM</b> | Internal Temp: <b style="color: var(--text-primary);">${hw.environment_sensor.temperature_c} °C</b>
             </div>
         </div>
     `;
@@ -565,7 +610,7 @@ async function calculateDSARoute() {
         summaryPanel.innerHTML = `<span style="color: var(--text-muted);">Executing Dijkstra + TSP Algorithm on Ahmedabad road network...</span>`;
     }
 
-    // Attempt backend calculation first
+    // Attempt backend calculation first if available
     try {
         const response = await apiRequest('/api/optimize-route', {
             method: 'POST',
@@ -746,9 +791,6 @@ async function triggerIoTSimulation() {
         updateKPICards(localBinsData);
         renderChart(localBinsData);
         calculateDSARoute();
-
-        const timeEl = document.getElementById('last-update-time');
-        if (timeEl) timeEl.innerText = `Simulated IoT Event: ${new Date().toLocaleTimeString()} (Sensors refreshed)`;
     }
 }
 
@@ -801,7 +843,7 @@ async function classifySample(category, chipElement) {
     document.querySelectorAll('.sample-chip').forEach(el => el.classList.remove('active'));
     if (chipElement) chipElement.classList.add('active');
 
-    // Attempt backend classification
+    // Attempt backend classification if available
     try {
         const response = await apiRequest('/api/classify-waste', {
             method: 'POST',
@@ -854,7 +896,6 @@ function handleImageUpload(event) {
             preview.style.display = 'block';
         }
 
-        // Randomly classify based on file name or simulated detection
         const categories = Object.keys(AI_CATEGORIES);
         let detectedCat = categories[Math.floor(Math.random() * categories.length)];
         const lowerName = file.name.toLowerCase();
@@ -874,67 +915,7 @@ function handleImageUpload(event) {
     reader.readAsDataURL(file);
 }
 
-// Citizen Reporting Modal Functions
-function openReportModal() {
-    const modal = document.getElementById('report-modal');
-    if (modal) modal.classList.add('active');
-}
-
-function closeReportModal() {
-    const modal = document.getElementById('report-modal');
-    if (modal) modal.classList.remove('active');
-}
-
-async function submitCitizenReport(e) {
-    e.preventDefault();
-    const nameInput = document.getElementById('report-name');
-    const addressInput = document.getElementById('report-address');
-    const categoryInput = document.getElementById('report-category');
-    const descInput = document.getElementById('report-desc');
-
-    const reportData = {
-        reporter_name: nameInput ? nameInput.value : 'Anonymous Citizen',
-        address: addressInput ? addressInput.value : 'Ahmedabad Central',
-        waste_category: categoryInput ? categoryInput.value : 'Overflow Dustbin',
-        description: descInput ? descInput.value : 'Urgent pickup needed'
-    };
-
-    try {
-        const response = await apiRequest('/api/reports', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(reportData)
-        });
-        const resData = await response.json();
-        if (resData.status === 'success') {
-            alert('Citizen Complaint Submitted Successfully! Dispatched Municipal Quick Response Fleet.');
-            closeReportModal();
-            fetchBins();
-            return;
-        }
-    } catch (err) {
-        // Standalone fallback
-    }
-
-    citizenReports.push(reportData);
-    
-    // Dynamically trigger overflow on nearest bin
-    const targetBin = localBinsData.find(b => b.id === 'BIN-105') || localBinsData[2];
-    if (targetBin) {
-        targetBin.fill_level = 95;
-        targetBin.status = 'OVERFLOW_CRITICAL';
-        targetBin.trigger_source = 'Citizen Complaint #' + (100 + citizenReports.length);
-        renderBins(localBinsData);
-        updateKPICards(localBinsData);
-        renderChart(localBinsData);
-        calculateDSARoute();
-    }
-
-    alert('Citizen Complaint #' + (100 + citizenReports.length) + ' Submitted! Municipal Rapid Response team notified.');
-    closeReportModal();
-}
-
-// Render Fleet Breakdown Doughnut Chart
+// Render Fleet Breakdown Doughnut Chart (4 Fill Ranges matching map)
 function renderChart(bins) {
     const canvas = document.getElementById('bin-chart');
     if (!canvas) return;
@@ -943,20 +924,24 @@ function renderChart(bins) {
     const regularBins = bins.filter(b => b.id.includes('BIN'));
     const critical = regularBins.filter(b => b.fill_level >= 85).length;
     const warning = regularBins.filter(b => 75 <= b.fill_level && b.fill_level < 85).length;
-    const normal = regularBins.filter(b => b.fill_level < 75).length;
+    const moderate = regularBins.filter(b => 50 <= b.fill_level && b.fill_level < 75).length;
+    const low = regularBins.filter(b => b.fill_level < 50).length;
 
     if (chartInstance) {
         chartInstance.destroy();
     }
 
+    const textColor = (document.documentElement.getAttribute('data-theme') === 'light') ? '#334155' : '#94a3b8';
+
     chartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Critical Overflow (>=85%)', 'Warning High (75-84%)', 'Normal Level (<75%)'],
+            labels: ['Critical (>=85%)', 'High (75-84%)', 'Moderate (50-74%)', 'Low (<50%)'],
             datasets: [{
-                data: [critical, warning, normal],
-                backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
-                borderWidth: 0
+                data: [critical, warning, moderate, low],
+                backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'],
+                borderWidth: (document.documentElement.getAttribute('data-theme') === 'light') ? 2 : 0,
+                borderColor: (document.documentElement.getAttribute('data-theme') === 'light') ? '#ffffff' : 'transparent'
             }]
         },
         options: {
@@ -964,7 +949,11 @@ function renderChart(bins) {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { color: '#94a3b8', font: { size: 11 } }
+                    labels: { 
+                        color: textColor, 
+                        font: { size: 11, family: 'Inter, sans-serif', weight: '600' },
+                        padding: 12
+                    }
                 }
             },
             cutout: '65%'

@@ -2,16 +2,317 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=frontend/index.html">
-    <title>Redirecting to SmartWaste IQ Dashboard...</title>
-    <script>
-        window.location.replace("frontend/index.html");
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartWaste IQ - Ahmedabad Smart City Fleet & Route Optimization Dashboard</title>
+    
+    <!-- Meta SEO & Trust Badges -->
+    <meta name="description" content="AI-driven IoT Municipal Waste Collection & Dynamic Shortest Path Route Optimizer for Ahmedabad Smart City.">
+    <meta name="author" content="Ahmedabad Municipal Corporation / Smart Waste IQ Team">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph / Social Sharing (WhatsApp, Discord, LinkedIn, Telegram Preview) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="SmartWaste IQ - Smart Waste Fleet & Route Optimizer">
+    <meta property="og:description" content="AI-driven IoT Municipal Waste Collection & Dynamic Shortest Path Route Optimizer for Ahmedabad Smart City.">
+    <meta property="og:site_name" content="SmartWaste IQ">
+    
+    <!-- Inline Clean Favicon (SVG Eco-Tech Leaflet Pin) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2306b6d4'%3E%3Cpath d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/%3E%3C/svg%3E">
+
+    <!-- Leaflet.js CSS & JS for Interactive Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body style="background-color: #090d16; color: #f8fafc; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
-    <div style="text-align: center;">
-        <h2 style="color: #06b6d4; margin-bottom: 8px;">Loading SmartWaste IQ Dashboard...</h2>
-        <p style="color: #94a3b8; font-size: 14px;">If not redirected automatically, <a href="frontend/index.html" style="color: #10b981; text-decoration: none; font-weight: bold;">click here to open the application</a>.</p>
+<body>
+
+    <!-- Header Navigation Bar -->
+    <header class="app-header">
+        <div class="header-brand">
+            <div class="brand-logo" title="Ahmedabad Municipal Corporation">AMC</div>
+            <div>
+                <h1 class="brand-title">SmartWaste IQ <span style="font-size: 11px; font-weight: 600; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.12); padding: 2px 7px; border-radius: 4px; margin-left: 6px; letter-spacing: 0.5px;">SWM-CCRS</span></h1>
+                <p class="brand-subtitle">Ahmedabad Municipal Corporation • IoT Telemetry & Fleet Command Center</p>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="toggleTheme()" id="theme-btn" title="Switch Theme (Dark / White)" aria-label="Toggle Theme" style="padding: 7px 11px; display: inline-flex; align-items: center; justify-content: center;">
+                <svg id="theme-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </button>
+            <span class="pulse-indicator" id="live-telemetry-pill" title="System Connection Status">
+                <span class="dot green"></span> Live
+            </span>
+            <button class="btn btn-secondary" onclick="triggerIoTSimulation()" title="Simulate real-time ultrasonic and weight fluctuations">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+                Simulate Telemetry
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Body -->
+    <div class="dashboard-container">
+
+        <!-- KPI Metric Cards Grid -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Active Monitored Bins</div>
+                <div class="kpi-value" id="kpi-active-bins">15</div>
+                <div class="kpi-subtext">Ahmedabad Urban Smart Bins</div>
+            </div>
+
+            <div class="kpi-card critical">
+                <div class="kpi-label">Critical Overflows (&ge;85%)</div>
+                <div class="kpi-value alert" id="kpi-critical-bins">5</div>
+                <div class="kpi-subtext">Immediate Pickup Required</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-label">Average Fleet Fill Height</div>
+                <div class="kpi-value" id="kpi-avg-fill">68.5%</div>
+                <div class="kpi-subtext">Total Waste Load: <span id="kpi-weight-val">1,480 kg</span></div>
+            </div>
+
+            <div class="kpi-card success">
+                <div class="kpi-label">Route Optimization Savings</div>
+                <div class="kpi-value success" id="kpi-fuel-saved">18.4 L</div>
+                <div class="kpi-subtext">CO2 Offset: <span id="kpi-co2-saved">49.3 kg</span></div>
+            </div>
+        </div>
+
+        <!-- Dashboard Split Content (Map Left, Controls Right) -->
+        <div class="content-grid">
+
+            <!-- Left Main Column: Interactive Ahmedabad Leaflet Map & Bins Table -->
+            <div class="left-column">
+                <!-- Leaflet Interactive Map Container with Controls Above Map -->
+                <div class="map-card">
+                    <div class="panel-header">
+                        <div class="panel-title">Ahmedabad Smart City Live Geographic Map</div>
+                        <div class="map-legend">
+                            <span class="legend-item"><span class="badge-dot red"></span> Critical (&ge;85%)</span>
+                            <span class="legend-item"><span class="badge-dot yellow"></span> High (75-84%)</span>
+                            <span class="legend-item"><span class="badge-dot blue"></span> Moderate (50-74%)</span>
+                            <span class="legend-item"><span class="badge-dot green"></span> Low (&lt;50%)</span>
+                            <span class="legend-item"><span class="badge-dot cyan"></span> Collection Path</span>
+                        </div>
+                    </div>
+
+                    <!-- Route Action & Control Bar Above Map -->
+                    <div class="map-control-bar">
+                        <div class="control-group">
+                            <label style="font-size: 13px; color: var(--text-secondary); font-weight: 600;">Pickup Threshold:</label>
+                            <select id="route-threshold" class="form-control-md" onchange="calculateDSARoute()">
+                                <option value="75">Critical Bins (&ge;75% Fill)</option>
+                                <option value="85">Emergency Overflow Only (&ge;85%)</option>
+                                <option value="50">All Active Bins (&ge;50%)</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-accent btn-md" onclick="calculateDSARoute()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;">
+                                <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+                            </svg>
+                            Calculate Path
+                        </button>
+                        <button class="btn btn-secondary btn-md" id="btn-animate-truck" onclick="toggleTruckAnimation()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;">
+                                <rect x="1" y="3" width="15" height="13"></rect>
+                                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                                <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                                <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                            </svg>
+                            Start Truck Route
+                        </button>
+                    </div>
+
+                    <div id="map"></div>
+                </div>
+
+                <!-- Live Smart Bins Telemetry Table -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title">Live Smart Dustbin Telemetry & Hardware State</div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Bin ID</th>
+                                    <th>Ahmedabad Location</th>
+                                    <th>Fill Height (%)</th>
+                                    <th>Weight Payload</th>
+                                    <th>Waste Category</th>
+                                    <th>Trigger Source</th>
+                                    <th>Hardware State</th>
+                                    <th>Inspect Hardware</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bins-table-body">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                                        Loading telemetry records...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Sidebar Control Panels & AI Classifier -->
+            <div class="right-column">
+
+                <!-- Panel 1: Route Optimization Calculation (km & stops) -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title">Calculated Truck Route & Distance</div>
+                    </div>
+
+                    <div class="route-stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-label">Total Distance</div>
+                            <div class="stat-value" id="calc-total-dist">-- km</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Travel Time</div>
+                            <div class="stat-value" id="calc-travel-time">-- mins</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Fuel Saved</div>
+                            <div class="stat-value success" id="calc-fuel-saved">-- L</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">CO2 Offset</div>
+                            <div class="stat-value success" id="calc-co2-saved">-- kg</div>
+                        </div>
+                    </div>
+
+                    <div class="route-result-box" id="route-summary-panel">
+                        <div style="font-weight: 700; font-size: 12px; color: var(--accent-cyan); margin-bottom: 8px;">
+                            Pickup Stop Sequence:
+                        </div>
+                        <div id="route-steps-list" style="font-size: 11px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 6px;">
+                            Click "Calculate Path" above map to compute optimal route.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 2: AI Waste Classifier -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title">AI Waste Sorting Classifier</div>
+                    </div>
+
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
+                        Select test specimen or upload custom image to run vision classification:
+                    </div>
+
+                    <div class="ai-sample-grid">
+                        <div class="sample-chip active" onclick="classifySample('Plastic / Recyclable', this)">
+                            <span class="title">PET Bottle</span>
+                        </div>
+                        <div class="sample-chip" onclick="classifySample('Organic / Wet Waste', this)">
+                            <span class="title">Food Scraps</span>
+                        </div>
+                        <div class="sample-chip" onclick="classifySample('Paper & Cardboard', this)">
+                            <span class="title">Cardboard</span>
+                        </div>
+                        <div class="sample-chip" onclick="classifySample('E-Waste & Electronics', this)">
+                            <span class="title">PCB E-Waste</span>
+                        </div>
+                        <div class="sample-chip" onclick="classifySample('Hazardous & Chemical', this)">
+                            <span class="title">Chemical / Bio</span>
+                        </div>
+                    </div>
+
+                    <!-- Custom Image Upload -->
+                    <div style="margin-top: 10px; margin-bottom: 12px;">
+                        <label for="ai-file-upload" class="btn btn-secondary btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                            Upload Custom Waste Photo
+                        </label>
+                        <input type="file" id="ai-file-upload" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+                        <img id="ai-image-preview" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 8px; margin-top: 8px; display: none; border: 1px solid var(--card-border);" alt="Preview">
+                    </div>
+
+                    <div class="ai-result-box" id="ai-result-panel">
+                        <div style="margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
+                            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Detected Waste Category</div>
+                            <div style="font-weight: 700; font-size: 15px; color: var(--accent-cyan);" id="ai-cat-title">Plastic / Recyclable</div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+                            <div>
+                                <span style="color: var(--text-muted);">Target Smart Bin:</span> 
+                                <b id="ai-target-bin" style="color: var(--text-primary);">BIN-101 (Plastic & Recyclable)</b>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">Material Type:</span> 
+                                <span id="ai-recyclability" style="color: var(--accent-green); font-weight: 600;">High (PET / HDPE 100% Recyclable)</span>
+                            </div>
+                            <div style="background: rgba(15, 23, 42, 0.6); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--card-border); margin-top: 4px;">
+                                <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; margin-bottom: 2px;">Recommended Handling Action:</div>
+                                <div style="font-size: 11px; color: var(--text-primary);" id="ai-instructions">Rinse thoroughly, crush to save space, place into Recyclables Smart Bin.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 3: Analytics Chart -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <div class="panel-title">Fleet Waste Breakdown</div>
+                    </div>
+                    <canvas id="bin-chart" height="180"></canvas>
+                </div>
+
+            </div>
+
+        </div>
     </div>
+
+    <!-- Modal for Smart Dustbin Hardware Diagnostics -->
+    <div class="modal-overlay" id="hardware-modal">
+        <div class="modal-content">
+            <div class="panel-header">
+                <div class="panel-title" id="hw-modal-title">Smart Dustbin Hardware Diagnostics</div>
+                <button class="modal-close" onclick="closeHardwareModal()">&times;</button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px; font-size: 12px;" id="hw-modal-body">
+                Loading hardware status...
+            </div>
+        </div>
+    </div>
+
+    <!-- App Logic Script -->
+    <script src="app.js"></script>
 </body>
 </html>

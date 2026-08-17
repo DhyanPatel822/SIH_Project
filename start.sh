@@ -13,23 +13,20 @@ echo "================================================================="
 
 if ! command -v python3 &> /dev/null; then
     if ! command -v python &> /dev/null; then
-        echo "[ERROR] Python 3 is not installed or not in PATH."
-        echo "Opening standalone client engine in default browser..."
+        echo "[INFO] Python is not detected in PATH."
+        echo "Opening standalone dashboard directly in your browser..."
         if command -v xdg-open &> /dev/null; then
-            xdg-open frontend/index.html
+            xdg-open index.html
         elif command -v open &> /dev/null; then
-            open frontend/index.html
+            open index.html
         fi
-        exit 1
+        exit 0
     else
         PYTHON_CMD=python
     fi
 else
     PYTHON_CMD=python3
 fi
-
-echo "Installing/verifying required dependencies..."
-$PYTHON_CMD -m pip install -r requirements.txt --quiet --disable-pip-version-check
 
 echo "Starting server on http://127.0.0.1:5000 ..."
 $PYTHON_CMD app.py

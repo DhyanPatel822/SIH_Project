@@ -38,27 +38,43 @@ An intelligent, full-stack Smart Waste Management & Dynamic Shortest Path Route 
    - Direct smart bin routing recommendations and material recyclability advice.
    - Supports preset specimen testing and custom photo upload.
 
-6. 📢 **Citizen Reporting Portal**:
-   - Enables citizens to submit geotagged overflow complaint tickets, immediately reflecting on municipal dispatch queues.
-
-7. 🔄 **Dual Engine Architecture (Works Everywhere)**:
+6. 🔄 **Dual Engine Architecture (Works Everywhere)**:
    - **Full-Stack Live Mode**: Powered by Python Flask REST API & SQLite relational database with continuous sensor logging.
-   - **Zero-Install Standalone Mode**: If opened directly via browser (`index.html`) or hosted on **GitHub Pages**, the client-side JavaScript algorithm engine handles all routing, simulation, and diagnostics seamlessly with zero setup required.
+   - **Zero-Install Standalone Cloud Mode**: If opened directly via browser (`index.html`) or hosted on **GitHub Pages**, the client-side JavaScript algorithm engine handles all routing, simulation, and diagnostics seamlessly with zero setup required and 100% clean browser compatibility.
 
 ---
 
-## 🚀 Quick Start Guide (For Anyone Cloning from GitHub)
+## 🌐 Free Instant GitHub Pages Deployment (Shareable Online Link)
 
-### Option 1: 1-Click Launch on Windows (Recommended)
-Simply double-click the included batch file:
-```
-Start_Smart_Waste_System.bat
-```
-*(This automatically verifies Python, installs dependencies if needed, starts the Flask backend, and opens your browser to `http://127.0.0.1:5000`).*
+You can share a live working link to anyone without needing a backend server:
+
+1. Push this repository to your GitHub account (`main` branch).
+2. On GitHub, go to your repository **Settings** → **Pages**.
+3. Under **Build and deployment** → **Source**, select **Deploy from a branch**.
+4. Choose Branch: **`main`** and Folder: **`/ (root)`**, then click **Save**.
+5. Your live website link will be ready at:
+   👉 **`https://YOUR_USERNAME.github.io/REPO_NAME/`**
+6. Anyone who opens the link will see the full interactive dashboard immediately with zero virus/security errors.
 
 ---
 
-### Option 2: 1-Click Launch on Linux / macOS
+## 🚀 Local Quick Start Guide
+
+### Option 1: Standard Python Launch (Recommended)
+Open a terminal in the project folder and run:
+```bash
+python app.py
+```
+*(This automatically starts the server and opens your browser at `http://127.0.0.1:5000`).*
+
+---
+
+### Option 2: Windows 1-Click Launch
+Double-click `Start_Smart_Waste_System.bat`.
+
+---
+
+### Option 3: Linux / macOS Launch
 Open terminal in the project folder and run:
 ```bash
 chmod +x start.sh
@@ -67,37 +83,9 @@ chmod +x start.sh
 
 ---
 
-### Option 3: Manual Command Line Launch
-
-#### 1. Prerequisites
-Ensure **Python 3.8+** is installed ([python.org](https://www.python.org/downloads/)).
-
-#### 2. Clone the Repository
-```bash
-git clone https://github.com/YOUR_USERNAME/smart_waste_system.git
-cd smart_waste_system
-```
-
-#### 3. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-#### 4. Run the Application
-```bash
-python app.py
-```
-
-#### 5. Open in Web Browser
-Open your browser and navigate to:  
-👉 **`http://127.0.0.1:5000`**
-
----
-
-### Option 4: Zero-Install Standalone Mode (No Python Needed / GitHub Pages)
-If you do not have Python installed or want to share a live static preview on **GitHub Pages**:
-- Simply double click and open [`frontend/index.html`](frontend/index.html) in Chrome, Firefox, Edge, or Safari!
-- The dashboard automatically detects client-side mode and runs the embedded Dijkstra + TSP algorithm and IoT simulation locally.
+### Option 4: Zero-Install Standalone Mode (No Python Needed)
+- Double-click and open [`index.html`](index.html) directly in any browser (Chrome, Firefox, Edge, Safari).
+- Everything (map, route calculation, IoT simulation, AI classifier) works locally out of the box.
 
 ---
 
@@ -105,9 +93,12 @@ If you do not have Python installed or want to share a live static preview on **
 
 ```text
 smart_waste_system/
+├── index.html                  # Main Web Dashboard Entry (Root Level for GitHub Pages)
+├── styles.css                  # Eco-Tech Design System
+├── app.js                      # Dynamic Leaflet GIS & Universal Algorithmic Engine
 ├── app.py                      # Unified Application Entry Point (Auto-launches browser)
 ├── run.py                      # Server Entry Point
-├── Start_Smart_Waste_System.bat # Windows 1-Click Launcher (Auto install & run)
+├── Start_Smart_Waste_System.bat # Windows 1-Click Launcher
 ├── start.sh                    # Linux / macOS 1-Click Launcher
 ├── requirements.txt            # Python Dependencies
 ├── waste_management.db         # Pre-seeded SQLite Database
@@ -123,10 +114,10 @@ smart_waste_system/
 │   ├── dsa_router.py           # Dijkstra (Min-Heap) + TSP 2-Opt Engine
 │   └── ai_classifier.py        # AI Waste Classification Logic
 │
-└── frontend/                   # Client User Interface
-    ├── index.html              # Dashboard Markup (Glassmorphic Dark Mode)
-    ├── styles.css              # Eco-Tech Design System
-    └── app.js                  # Dynamic Leaflet GIS & Universal API Engine
+└── frontend/                   # Frontend Backup Assets
+    ├── index.html              # Dashboard Markup
+    ├── styles.css              # Styling Tokens
+    └── app.js                  # App Engine
 ```
 
 ---
@@ -145,54 +136,6 @@ The Flask backend provides clean REST endpoints with full CORS support:
 | `POST` | `/api/classify-waste` | Perform AI classification on waste images / categories |
 | `GET`/`POST` | `/api/reports` | Retrieve or submit citizen overflow complaint tickets |
 | `GET` | `/api/analytics` | Fetch fleet summary metrics and efficiency KPIs |
-
----
-
-## 🧮 Algorithmic Formulation (Dijkstra + 2-Opt TSP)
-
-1. **Haversine Distance**:
-   $$d = 2R \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta\phi}{2}\right) + \cos\phi_1\cos\phi_2\sin^2\left(\frac{\Delta\lambda}{2}\right)}\right)$$
-2. **Graph Construction**: Generates a complete weighted graph connecting the Sabarmati Dispatch Hub, priority smart bins exceeding the threshold ($\ge 75\%$), and the Pirana Recovery Facility.
-3. **Shortest Path & Nearest Neighbor TSP**: Utilizes Dijkstra's algorithm with a Min-Heap priority queue to determine shortest paths between candidate stops.
-4. **2-Opt Local Search Optimization**: Iteratively untangles crossing sub-paths until no further Euclidean reduction is possible:
-   $$\text{cost}(A, C) + \text{cost}(B, D) < \text{cost}(A, B) + \text{cost}(C, D)$$
-
----
-
-## 📤 How to Upload to GitHub (Step-by-Step)
-
-To push this repository to your own GitHub account:
-
-```bash
-# 1. Initialize git repository
-git init
-
-# 2. Add all project files
-git add .
-
-# 3. Commit your changes
-git commit -m "feat: Smart Waste Management & Route Optimization System"
-
-# 4. Set main branch
-git branch -M main
-
-# 5. Link your GitHub repository (replace with your repo URL)
-git remote add origin https://github.com/YOUR_USERNAME/smart-waste-system.git
-
-# 6. Push code to GitHub
-git push -u origin main
-```
-
----
-
-## ☁️ Free 1-Click Cloud Deployment (Render / Railway)
-
-1. Fork or push this repository to your GitHub.
-2. Go to [Render.com](https://render.com/) or [Railway.app](https://railway.app/).
-3. Click **New Web Service** and select this repository.
-4. Set Build Command: `pip install -r requirements.txt`
-5. Set Start Command: `gunicorn backend.app:app`
-6. Your live web application will be accessible worldwide on a free HTTPS domain!
 
 ---
 

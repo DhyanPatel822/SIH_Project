@@ -84,12 +84,44 @@ def init_db():
 
     conn.commit()
 
+    # Migration checks for reports table
+    for col, col_def in [
+        ('ward_zone', 'TEXT DEFAULT "West Zone - Navrangpura"'),
+        ('priority', 'TEXT DEFAULT "P1 - CRITICAL"'),
+        ('assigned_unit', 'TEXT DEFAULT "QRV-04 (West Zone)"')
+    ]:
+        try:
+            cursor.execute(f'ALTER TABLE reports ADD COLUMN {col} {col_def}')
+        except Exception:
+            pass
+
+    conn.commit()
+
     cursor.execute('SELECT COUNT(*) FROM bins')
     if cursor.fetchone()[0] == 0:
         seed_ahmedabad_bins(cursor)
         conn.commit()
 
+    cursor.execute('SELECT COUNT(*) FROM reports')
+    if cursor.fetchone()[0] == 0:
+        seed_initial_reports(cursor)
+        conn.commit()
+
     conn.close()
+
+def seed_initial_reports(cursor):
+    sample_reports = [
+        ('Priya Sharma', '+91 98250 •••••', 'West Zone - Navrangpura', 23.0360, 72.5590, 'Commerce Six Roads, Navrangpura', 'Overflowing Public Bin', 'P1 - CRITICAL', 'QRV-04 (West Zone)', 'Commercial packaging and plastic waste overflow blocking footpath.', 'PENDING'),
+        ('Rajesh Mehta', '+91 98980 •••••', 'Central Zone - Ashram Road', 23.0390, 72.5710, 'Near Income Tax Circle, Ashram Road', 'Hazardous Chemical Waste', 'P2 - HIGH HAZARD', 'QRV-01 (Hazmat Unit)', 'Discarded commercial solvent cans and lead-acid battery components.', 'DISPATCHED'),
+        ('Kavita Shah', '+91 97240 •••••', 'North West Zone - Vastrapur', 23.0370, 72.5290, 'Vastrapur Lake Main Promenade Gate', 'Uncollected Commercial Waste', 'P3 - ROUTINE', 'QRV-07 (Mini Dumper)', 'Weekend market food peel and organic waste piles near service lane.', 'RESOLVED')
+    ]
+    try:
+        cursor.executemany('''
+            INSERT INTO reports (reporter_name, reporter_phone, ward_zone, latitude, longitude, address, waste_category, priority, assigned_unit, description, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', sample_reports)
+    except Exception:
+        pass
 
 def seed_ahmedabad_bins(cursor):
     sample_bins = [
@@ -160,13 +192,19 @@ def update_bin_telemetry(bin_id, fill_level, weight_kg, battery_pct, temperature
     conn.commit()
     conn.close()
 
-def add_citizen_report(reporter_name, reporter_phone, lat, lng, address, waste_category, description):
+def add_citizen_report(reporter_name, reporter_phone, lat, lng, address, waste_category, description, ward_zone='West Zone - Navrangpura', priority='P1 - CRITICAL', assigned_unit='QRV-04 (West Zone)'):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO reports (reporter_name, reporter_phone, latitude, longitude, address, waste_category, description)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (reporter_name, reporter_phone, lat, lng, address, waste_category, description))
+    try:
+        cursor.execute('''
+            INSERT INTO reports (reporter_name, reporter_phone, ward_zone, latitude, longitude, address, waste_category, priority, assigned_unit, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (reporter_name, reporter_phone, ward_zone, lat, lng, address, waste_category, priority, assigned_unit, description))
+    except Exception:
+        cursor.execute('''
+            INSERT INTO reports (reporter_name, reporter_phone, latitude, longitude, address, waste_category, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (reporter_name, reporter_phone, lat, lng, address, waste_category, description))
     conn.commit()
     report_id = cursor.lastrowid
     conn.close()
@@ -179,6 +217,29 @@ def fetch_all_reports():
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+def update_report_status(report_id, new_status='DISPATCHED'):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('UPDATE reports SET status = ? WHERE id = ?', (new_status, report_id))
+    conn.commit()
+    conn.close()
+
+def delete_report(report_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM reports WHERE id = ?', (report_id,))
+    conn.commit()
+    conn.close()
+
+def delete_resolved_reports():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM reports WHERE status = "RESOLVED"')
+    deleted_count = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return deleted_count
 
 def save_optimized_route(route_name, total_distance, estimated_time, bins_count, fuel_saved, co2_saved, waypoints, dsa_trace):
     conn = get_db_connection()
